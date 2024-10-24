@@ -1,4 +1,4 @@
-from transformers import AutoModel, AutoTokenizer, AutoImageProcessor, AutoConfig
+from transformers import OpenAIGPTLMHeadModel, AutoTokenizer, AutoImageProcessor, AutoConfig
 
 def init_subject_model(
     model_name: str, model_type: str, model_config=None, device: str = "cpu"
@@ -14,17 +14,14 @@ def init_subject_model(
     """
 
     match model_type:
-        case "text":
-            if model_config is None:
-                model_config = AutoConfig.from_pretrained(model_name)
-            tokenizer = AutoTokenizer.from_pretrained(model_name)
-            model = AutoModel.from_pretrained(model_name, config=model_config)
+        case "text": # openai-community/openai-gpt
+            tokenizer = tokenizer = AutoTokenizer.from_pretrained(model_name)
+            model = OpenAIGPTLMHeadModel.from_pretrained(model_name)
             model.to(device=device)
             model.eval()
             return {
                 "model_text": model,
                 "tokenizer": tokenizer,
-                "config_text": model_config,
             }
         case "image": # facebook/dinov2-base
             config = AutoConfig.from_pretrained(model_name)
