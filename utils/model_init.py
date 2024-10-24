@@ -1,4 +1,4 @@
-from transformers import OpenAIGPTLMHeadModel, AutoTokenizer, AutoImageProcessor, AutoConfig
+from transformers import AutoModelForCausalLM, OpenAIGPTLMHeadModel, AutoTokenizer, AutoImageProcessor, AutoConfig
 
 def init_subject_model(
     model_name: str, model_type: str, model_config=None, device: str = "cpu"
@@ -14,9 +14,13 @@ def init_subject_model(
     """
 
     match model_type:
-        case "text": # openai-community/openai-gpt
+        case "text":
             tokenizer = tokenizer = AutoTokenizer.from_pretrained(model_name)
-            model = OpenAIGPTLMHeadModel.from_pretrained(model_name)
+            if 'gpt' in model_name: # openai-community/openai-gpt
+                model = OpenAIGPTLMHeadModel.from_pretrained(model_name)
+            elif 'llama' in model_name: # meta-llama/Llama-3.2-1B
+                model = AutoModelForCausalLM.from_pretrained(model_name)
+
             model.to(device=device)
             model.eval()
             return {
