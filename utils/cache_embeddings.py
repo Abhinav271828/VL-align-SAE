@@ -1,5 +1,6 @@
 from .model_init import init_subject_model
-from .get_embeddings import get_embedding_coco_eval
+from .get_embeddings import get_image_embedding, get_text_embedding
+from PIL import Image
 import h5py
 import torch
 import tqdm
@@ -35,44 +36,27 @@ def convert_raw_to_embeddings(
         model_name=model_name, model_type=model_type, device=device
     )
 
-    text_config = model_init_dict["config_text"]
-
-    num_layers = text_config.num_hidden_layers + 1  # +1 for the embeddings
-    feature_count = text_config.hidden_size
-
     text_embed_path, image_embed_path = output_paths
 
     with h5py.File(text_embed_path, "w") as fout:
-        with h5py.File(image_embed_path, "w") as fimg:
-            for index, example in tqdm(enumerate(dataset_split)):
+        for index, example in tqdm(enumerate(dataset_split['filename'])):
 
-                # unpack the sample
-                c1 = example["caption_0"]
-                c2 = example["caption_1"]
-                i1 = example["image_0"].convert("RGB")
-                i2 = example["image_1"].convert("RGB")
+            # unpack the sample
+            image = Image.open(f'/scratch/bani/.cache/datasets/downloads/extracted/70111e6614c7cec8efd278347b6207e7de5dd3b8babd21af307ade43cbc27d02/val2014/{example}')
 
-                # get the embeddings:
-                c1_embed_list, c2_embed_list, i1_embed, i2_embed = (
-                    get_embedding_coco_eval(model_init_dict, c1, c2, i1, i2)
-                )
+            embed = get_image_embedding(model_init_dict, image)
 
-                c1_embed_tensor = torch.stack(
-                    c1_embed_list
-                )  # (num_layers, feature_count)
-                c2_embed_tensor = torch.stack(
-                    c2_embed_list
-                )  # (num_layers, feature_count)
+            dimg = fimg.create_dataset(str(index), (768,))
+            dimg[:] = embed.squeeze().cpu().numpy()
 
-                # make a c tensor with the two captions
-                c_tensor = torch.stack([c1_embed_tensor, c2_embed_tensor])
+    with h5py.File(image_embed_pth, "w") as fimg:
+        for index, example in tqdm(enumerate(dataset_split['sentences'])):
 
-                # make an i tensor with the two images
-                i_tensor = torch.stack([i1_embed, i2_embed])
+            # unpack the sample
+            cap = example['raw']
 
-                dset = fout.create_dataset(str(index), (2, num_layers, feature_count))
+            embed = get_text_embedding(model_init_dict, cap)
 
-                dset[:, :, :] = c_tensor.squeeze().cpu().numpy()
+            dset = fout.create_dataset(str(index), (feature_count, ))
 
-                dimg = fimg.create_dataset(str(index), (2, feature_count))
-                dimg[:, :] = i_tensor.squeeze().cpu().numpy()
+            dset[:, :, :] = c_tensor.squeeze().cpu().numpy()

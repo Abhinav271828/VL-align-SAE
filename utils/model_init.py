@@ -27,7 +27,7 @@ def init_subject_model(
                 "config_text": model_config,
             }
         case "image": # facebook/dinov2-base
-            tokenizer = AutoTokenizer.from_pretrained(model_name)
+            config = AutoConfig.from_pretrained(model_name)
             model = AutoModel.from_pretrained(model_name, config=model_config)
             model.to(device=device)
             processor = AutoImageProcessor.from_pretrained(model_name)

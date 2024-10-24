@@ -1,9 +1,6 @@
 import torch
 
-import torch
-
-
-def get_text_feature_across_layers_clip(model_dict, text, pooling="pooler"):
+def get_text_embedding(model_dict, text, pooling="pooler"):
     """
     Get the text features across layers
     Inputs:
@@ -54,38 +51,14 @@ def get_text_feature_across_layers_clip(model_dict, text, pooling="pooler"):
         "text_features_post_proj": text_features_post_proj,
     }
 
-def get_embedding_coco_eval(model_dict, c1, c2, i1, i2, pooling: str = "pooler"):
+def get_image_embedding(model_dict, image, pooling: str = "pooler"):
     processor = model_dict["processor"]
-    tokenizer = model_dict["tokenizer"]
-    model_text = model_dict["model_text"]
-    model_image = model_dict["model"].vision_model
-    device = model_dict["model"].device
     model = model_dict["model"]
+    device = model_dict["model"].device
 
-    input_image_1 = processor(images=i1, return_tensors="pt", padding=True).to(
-        device=device
-    )
-    input_image_2 = processor(images=i2, return_tensors="pt", padding=True).to(
-        device=device
-    )
-
-    image_projection = model.visual_projection
+    input_image = processor(images=image, return_tensors="pt", padding=True).to(device=device)
 
     with torch.no_grad():
-        # print(model_image(**input_image_1).last_hidden_state.shape)
-        image_1_features = image_projection(model_image(**input_image_1).pooler_output)
-        image_2_features = image_projection(model_image(**input_image_2).pooler_output)
-        print(image_2_features.shape)
-        # image_2_features
-        text_1_features, text_2_features = [], []
+        embedding = model_image(**input_image_1).pooler_output
 
-        text_1_features = get_text_feature_across_layers_clip(
-            model_dict=model_dict, text=c1, pooling=pooling
-        )["text_features_post_proj"]
-
-        text_2_features = get_text_feature_across_layers_clip(
-            model_dict=model_dict, text=c2, pooling=pooling
-        )["text_features_post_proj"]
-
-    return text_1_features, text_2_features, image_1_features, image_2_features
-
+    return embedding
