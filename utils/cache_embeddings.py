@@ -26,14 +26,14 @@ def create_output_filename(
 
 def convert_raw_to_embeddings(
     dataset_split,
-    model_name: str,
-    model_type: str,
+    text_model_name: str,
+    image_model_name: str,
     output_paths: tuple[str, str],  # image file and text file
     device: str = "cpu",
 ):
 
     model_init_dict = init_subject_model(
-        model_name=model_name, model_type=model_type, device=device
+        model_name=image_model_name, model_type='image', device=device
     )
 
     text_embed_path, image_embed_path = output_paths
@@ -49,6 +49,10 @@ def convert_raw_to_embeddings(
             dimg = fimg.create_dataset(str(index), (768,))
             dimg[:] = embed.squeeze().cpu().numpy()
 
+    model_init_dict = init_subject_model(
+        model_name=text_model_name, model_type='text', device=device
+    )
+
     with h5py.File(image_embed_pth, "w") as fimg:
         for index, example in tqdm(enumerate(dataset_split['sentences'])):
 
@@ -59,4 +63,4 @@ def convert_raw_to_embeddings(
 
             dset = fout.create_dataset(str(index), (feature_count, ))
 
-            dset[:, :, :] = c_tensor.squeeze().cpu().numpy()
+            dset[:] = c_tensor.squeeze().cpu().numpy()

@@ -17,7 +17,11 @@ def get_text_embedding(model_dict, text, pooling="pooler"):
     input_text = tokenizer(text, return_tensors="pt").to(device=device)
 
     with torch.no_grad():
-        embedding = model_text(**input_text, output_hidden_states=True).hidden_states[-1].mean(dim=-2)
+        embedding = model_text(**input_text, output_hidden_states=True).hidden_states[-1]
+        if 'llama' in model.name_or_path:
+            embedding = embedding[..., -1]
+        elif 'gpt' in model.name_or_path:
+            embedding = embedding.mean(dim=-1)
     
     return embedding
 
