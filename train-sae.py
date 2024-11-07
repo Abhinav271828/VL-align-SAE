@@ -15,6 +15,8 @@ parser.add_argument("--log_interval",   help="How often to log losses",
                     type=int,        default=10,    required=False)
 parser.add_argument("--val_interval",help="Validation interval",
                     type=int,        default=1,    required=False)
+parser.add_argument("--batch",       help="Partition size",
+                    type=int,        default=100,  required=False)
 
 args = parser.parse_args()
 

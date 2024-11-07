@@ -6,6 +6,7 @@ import torch
 from torch import nn
 import wandb
 import json
+from utils.eval import eval_batch
 from tqdm import tqdm
 
 def step(sample, sae, criterion):
@@ -99,6 +100,7 @@ def train(args):
         if e % args.val_interval == 0:
             avg_txt_loss, avg_img_loss, avg_txt_loss_rev, avg_img_loss_rev = 0, 0, 0, 0
             avg_loss, avg_loss_rev = 0, 0
+            avg_txt_accuracy_per_partition, avg_img_accuracy_per_partition = 0, 0
             sae.eval()
             for txt, img in val:
                 r, txt_loss, img_loss = step((txt, img), sae, criterion)
@@ -110,6 +112,10 @@ def train(args):
                     avg_img_loss_rev += img_loss.item()
                     avg_txt_loss_rev += txt_loss.item()
                     avg_loss_rev += loss.item()
+                
+                txt_score, img_score = eval_batch(sae, (txt, img))
+                avg_txt_accuracy_per_partition += txt_score.item()
+                avg_img_accuracy_per_partition += img_score.item()
 
                 if i % args.log_interval == 0:
                     wandb.log({"val_step_txt_loss": txt_loss.item(),
@@ -124,12 +130,17 @@ def train(args):
             avg_img_loss_rev /= (len(val)/2)
             avg_loss_rev /= (len(val)/2)
 
+            avg_txt_accuracy_per_partition /= len(val)
+            avg_img_accuracy_per_partition /= len(val)
+
             wandb.log({"val_avg_txt_loss": avg_txt_loss,
                        "val_avg_img_loss": avg_img_loss,
                        "val_avg_loss": avg_loss,
                        "val_avg_txt_loss_rev": avg_txt_loss_rev,
                        "val_avg_img_loss_rev": avg_img_loss_rev,
-                       "val_avg_loss_rev": avg_loss_rev})
+                       "val_avg_loss_rev": avg_loss_rev,
+                       "val_avg_txt_accuracy": avg_txt_accuracy_per_partition,
+                       "val_avg_img_accuracy": avg_img_accuracy_per_partition})
 
     torch.save(sae.state_dict(), ('sae.pth'))
     with open('sae_config.json', 'w') as f:
