@@ -1,4 +1,4 @@
-from transformers import AutoModelForCausalLM, OpenAIGPTLMHeadModel, AutoTokenizer, AutoImageProcessor, AutoConfig
+from transformers import AutoModelForCausalLM, OpenAIGPTLMHeadModel, AutoTokenizer, AutoModel, AutoImageProcessor
 
 def init_subject_model(
     model_name: str, model_type: str, model_config=None, device: str = "cpu"
@@ -16,19 +16,19 @@ def init_subject_model(
     match model_type:
         case "text":
             tokenizer = tokenizer = AutoTokenizer.from_pretrained(model_name)
-            if 'gpt' in model_name: # openai-community/openai-gpt
+            if 'gpt' in model_name: # openai-community/openai-gpt2
                 model = OpenAIGPTLMHeadModel.from_pretrained(model_name)
             elif 'llama' in model_name: # meta-llama/Llama-3.2-1B
                 model = AutoModelForCausalLM.from_pretrained(model_name)
+# Add CLIP-14
 
             model.to(device=device)
             model.eval()
             return {
-                "model_text": model,
+                "model": model,
                 "tokenizer": tokenizer,
             }
         case "image": # facebook/dinov2-base
-            config = AutoConfig.from_pretrained(model_name)
             model = AutoModel.from_pretrained(model_name, config=model_config)
             model.to(device=device)
             processor = AutoImageProcessor.from_pretrained(model_name)

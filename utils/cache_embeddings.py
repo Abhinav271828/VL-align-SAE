@@ -2,8 +2,8 @@ from .model_init import init_subject_model
 from .get_embeddings import get_image_embedding, get_text_embedding
 from PIL import Image
 import h5py
-import torch
-import tqdm
+from tqdm import tqdm
+import os
 
 def create_output_filename(
     input_path: str, output_dir: str, model_name: str, pool_strat: str = "pooler"
@@ -25,42 +25,43 @@ def create_output_filename(
     )
 
 def convert_raw_to_embeddings(
-    dataset_split,
+    split : str,
+    dataset,
     text_model_name: str,
     image_model_name: str,
     output_paths: tuple[str, str],  # image file and text file
+    create_image: bool, create_text: bool,
     device: str = "cpu",
 ):
 
-    model_init_dict = init_subject_model(
-        model_name=image_model_name, model_type='image', device=device
-    )
-
     text_embed_path, image_embed_path = output_paths
 
-    with h5py.File(text_embed_path, "w") as fout:
-        for index, example in tqdm(enumerate(dataset_split['filename'])):
+    print("...for image...")
+    if create_image:
+        model_init_dict = init_subject_model(
+            model_name=image_model_name, model_type='image', device='cuda:0'
+        )
 
-            # unpack the sample
-            image = Image.open(f'/scratch/bani/.cache/datasets/downloads/extracted/70111e6614c7cec8efd278347b6207e7de5dd3b8babd21af307ade43cbc27d02/val2014/{example}')
+        with h5py.File(image_embed_path, "w") as fimg:
+            for idx, example in tqdm(enumerate(dataset[split])):
+                embed = get_image_embedding(model_init_dict, example['image'])
 
-            embed = get_image_embedding(model_init_dict, image)
+                dimg = fimg.create_dataset(str(idx), (768,))
+                dimg[:] = embed.squeeze().cpu().numpy()
+    else: print("already exists!")
 
-            dimg = fimg.create_dataset(str(index), (768,))
-            dimg[:] = embed.squeeze().cpu().numpy()
+    print("...and text.")
+    if create_text:
+        model_init_dict = init_subject_model(
+            model_name=text_model_name, model_type='text', device='cuda:0'
+        )
 
-    model_init_dict = init_subject_model(
-        model_name=text_model_name, model_type='text', device=device
-    )
+        with h5py.File(text_embed_path, "w") as ftxt:
+            for idx, example in tqdm(enumerate(dataset[split])):
+                cap = example['sentences']['raw']
+                embed = get_text_embedding(model_init_dict, cap)
 
-    with h5py.File(image_embed_pth, "w") as fimg:
-        for index, example in tqdm(enumerate(dataset_split['sentences'])):
-
-            # unpack the sample
-            cap = example['raw']
-
-            embed = get_text_embedding(model_init_dict, cap)
-
-            dset = fout.create_dataset(str(index), (feature_count, ))
-
-            dset[:] = c_tensor.squeeze().cpu().numpy()
+                d = embed.size(-1)
+                dset = ftxt.create_dataset(str(idx), (d, ))
+                dset[:] = embed.squeeze().cpu().numpy()
+    else: print("already exists!")

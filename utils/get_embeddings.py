@@ -17,12 +17,8 @@ def get_text_embedding(model_dict, text, pooling="pooler"):
     input_text = tokenizer(text, return_tensors="pt").to(device=device)
 
     with torch.no_grad():
-        embedding = model_text(**input_text, output_hidden_states=True).hidden_states[-1]
-        if 'llama' in model.name_or_path:
-            embedding = embedding[..., -1]
-        elif 'gpt' in model.name_or_path:
-            embedding = embedding.mean(dim=-1)
-    
+        embedding = model(**input_text, output_hidden_states=True).hidden_states[-1]
+        embedding = embedding[..., -1, :]
     return embedding
 
 def get_image_embedding(model_dict, image, pooling: str = "pooler"):
@@ -30,9 +26,9 @@ def get_image_embedding(model_dict, image, pooling: str = "pooler"):
     model = model_dict["model"]
     device = model_dict["model"].device
 
-    input_image = processor(images=image, return_tensors="pt", padding=True).to(device=device)
+    input_image = processor(images=image, return_tensors="pt").to(device=device)
 
     with torch.no_grad():
-        embedding = model_image(**input_image_1).pooler_output
+        embedding = model(**input_image).pooler_output
 
     return embedding
