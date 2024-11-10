@@ -22,6 +22,7 @@ txt_dim = train_dl.dataset.txt_dim
 img_dim = train_dl.dataset.img_dim
 proj_dim = max(txt_dim, img_dim)
 sae = SAE(txt_dim, img_dim, proj_dim, cfg['exp'] * proj_dim, cfg['k'])
+sae.load_state_dict(torch.load('sae.pth'))
 
 for DL in [train_dl, val_dl, test_dl]:
     num_partitions = len(DL)
