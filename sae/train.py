@@ -37,9 +37,9 @@ def step(sample, sae, criterion):
 
 def train(args):
     print("Loading train dataset.")
-    train = DataLoader(MSCOCO(split='train', text_model='openai-community/openai-gpt'), batch_size=64)
+    train = DataLoader(MSCOCO(split='train', text_model='openai-community/openai-gpt'), batch_size=args.batch)
     print("Loading validation dataset.")
-    val = DataLoader(MSCOCO(split='validation', text_model='openai-community/openai-gpt'), batch_size=64)
+    val = DataLoader(MSCOCO(split='validation', text_model='openai-community/openai-gpt'), batch_size=args.batch)
 
     txt_dim = train.dataset.txt_dim
     img_dim = train.dataset.img_dim
@@ -112,6 +112,9 @@ def train(args):
                     avg_img_loss_rev += img_loss.item()
                     avg_txt_loss_rev += txt_loss.item()
                     avg_loss_rev += loss.item()
+
+                txt = txt.to('cuda:0')
+                img = img.to('cuda:0')
                 
                 txt_score, img_score = eval_batch(sae, (txt, img))
                 avg_txt_accuracy_per_partition += txt_score.item()
@@ -142,7 +145,10 @@ def train(args):
                        "val_avg_txt_accuracy": avg_txt_accuracy_per_partition,
                        "val_avg_img_accuracy": avg_img_accuracy_per_partition})
 
-    torch.save(sae.state_dict(), ('sae.pth'))
-    with open('sae_config.json', 'w') as f:
+
+    i = 0
+    torch.save(sae.state_dict(), (f'sae_{i}.pth'))
+    torch.save(model.state_dict(), os.path.join(dir_name, 'model.pth'))
+    with open(os.path.join(dir_name, f'config_{i}.json'), 'w') as f:
         json.dump(vars(args), f, indent=4)
     wandb.finish()
