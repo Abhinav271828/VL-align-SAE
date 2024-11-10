@@ -14,23 +14,20 @@ def step(sample, sae, criterion):
     txt = txt.to('cuda:0')
     img = img.to('cuda:0')
 
-    txt_proj, text = sae.encode_text(txt)
-    img_proj, image = sae.encode_image(img)
+    text = sae.encode_text(txt)
+    image = sae.encode_image(img)
 
     r = randint(0, 1)
     if r:
         txt_recon = sae.decode_text(text)
         img_recon = sae.decode_image(image)
 
-        txt_loss = criterion(txt_proj, txt_recon)
-        img_loss = criterion(img_proj, img_recon)
-
     else:
         txt_recon = sae.decode_text(image)
         img_recon = sae.decode_image(text)
 
-        txt_loss = criterion(txt_proj, txt_recon)
-        img_loss = criterion(img_proj, img_recon)
+    txt_loss = criterion(txt, txt_recon)
+    img_loss = criterion(img, img_recon)
     
     return r, txt_loss, img_loss
 
@@ -44,7 +41,7 @@ def train(args):
     txt_dim = train.dataset.txt_dim
     img_dim = train.dataset.img_dim
     proj_dim = max(txt_dim, img_dim)
-    sae = SAE(txt_dim, img_dim, proj_dim, args.exp * proj_dim, args.k)
+    sae = SAE(txt_dim, img_dim, args.exp * proj_dim, args.k)
     sae = sae.to('cuda:0')
 
     criterion = nn.MSELoss()
@@ -100,7 +97,8 @@ def train(args):
         if e % args.val_interval == 0:
             avg_txt_loss, avg_img_loss, avg_txt_loss_rev, avg_img_loss_rev = 0, 0, 0, 0
             avg_loss, avg_loss_rev = 0, 0
-            avg_txt_accuracy_per_partition, avg_img_accuracy_per_partition = 0, 0
+            avg_latent_txt_accuracy_per_partition, avg_latent_img_accuracy_per_partition = 0, 0
+            avg_output_txt_accuracy_per_partition, avg_output_img_accuracy_per_partition = 0, 0
             sae.eval()
             for txt, img in val:
                 r, txt_loss, img_loss = step((txt, img), sae, criterion)
@@ -116,15 +114,11 @@ def train(args):
                 txt = txt.to('cuda:0')
                 img = img.to('cuda:0')
                 
-                txt_score, img_score = eval_batch(sae, (txt, img))
-                avg_txt_accuracy_per_partition += txt_score.item()
-                avg_img_accuracy_per_partition += img_score.item()
-
-                if i % args.log_interval == 0:
-                    wandb.log({"val_step_txt_loss": txt_loss.item(),
-                               "val_step_img_loss": img_loss.item()} if r else \
-                              {"val_step_txt_loss_rev": txt_loss.item(),
-                               "val_step_img_loss_rev": img_loss.item()})
+                latent_score, output_score = eval_batch(sae, (txt, img), args.topk)
+                avg_latent_txt_accuracy_per_partition += latent_score[0]
+                avg_latent_img_accuracy_per_partition += latent_score[1]
+                avg_output_txt_accuracy_per_partition += output_score[0]
+                avg_output_img_accuracy_per_partition += output_score[1]
 
             avg_txt_loss /= (len(val)/2)
             avg_img_loss /= (len(val)/2)
@@ -133,8 +127,10 @@ def train(args):
             avg_img_loss_rev /= (len(val)/2)
             avg_loss_rev /= (len(val)/2)
 
-            avg_txt_accuracy_per_partition /= len(val)
-            avg_img_accuracy_per_partition /= len(val)
+            avg_latent_txt_accuracy_per_partition /= len(val)
+            avg_latent_img_accuracy_per_partition /= len(val)
+            avg_output_txt_accuracy_per_partition /= len(val)
+            avg_output_img_accuracy_per_partition /= len(val)
 
             wandb.log({"val_avg_txt_loss": avg_txt_loss,
                        "val_avg_img_loss": avg_img_loss,
@@ -142,13 +138,16 @@ def train(args):
                        "val_avg_txt_loss_rev": avg_txt_loss_rev,
                        "val_avg_img_loss_rev": avg_img_loss_rev,
                        "val_avg_loss_rev": avg_loss_rev,
-                       "val_avg_txt_accuracy": avg_txt_accuracy_per_partition,
-                       "val_avg_img_accuracy": avg_img_accuracy_per_partition})
+                       "val_avg_latent_txt_accuracy": avg_latent_txt_accuracy_per_partition,
+                       "val_avg_latent_img_accuracy": avg_latent_img_accuracy_per_partition,
+                       "val_avg_output_txt_accuracy": avg_output_txt_accuracy_per_partition,
+                       "val_avg_output_img_accuracy": avg_output_img_accuracy_per_partition})
 
 
     i = 0
+    while os.path.exists(f'sae_{i}.pth'):
+        i += 1
     torch.save(sae.state_dict(), (f'sae_{i}.pth'))
-    torch.save(model.state_dict(), os.path.join(dir_name, 'model.pth'))
     with open(os.path.join(dir_name, f'config_{i}.json'), 'w') as f:
         json.dump(vars(args), f, indent=4)
     wandb.finish()
