@@ -42,12 +42,16 @@ def convert_raw_to_embeddings(
             model_name=image_model_name, model_type='image', device='cuda:0'
         )
 
+        img_ids = []
         with h5py.File(image_embed_path, "w") as fimg:
             for idx, example in tqdm(enumerate(dataset[split])):
+                if example['imgid'] in img_ids:
+                    continue
                 embed = get_image_embedding(model_init_dict, example['image'])
 
                 dimg = fimg.create_dataset(str(idx), (768,))
                 dimg[:] = embed.squeeze().cpu().numpy()
+                img_ids.append(example['imgid'])
     else: print("already exists!")
 
     print("...and text.")
@@ -56,12 +60,32 @@ def convert_raw_to_embeddings(
             model_name=text_model_name, model_type='text', device='cuda:0'
         )
 
+        img_ids = []
         with h5py.File(text_embed_path, "w") as ftxt:
             for idx, example in tqdm(enumerate(dataset[split])):
+                if example['imgid'] in img_ids:
+                    continue
                 cap = example['sentences']['raw']
                 embed = get_text_embedding(model_init_dict, cap)
 
                 d = embed.size(-1)
                 dset = ftxt.create_dataset(str(idx), (d, ))
                 dset[:] = embed.squeeze().cpu().numpy()
+
+                img_ids.append(example['imgid'])
     else: print("already exists!")
+
+# Coco dataset example
+#{
+#    'image': <PIL.JpegImagePlugin.JpegImageFile image mode=RGB size=480x320 at 0x1510DB15A990>,
+#    'filepath': 'COCO_val2014_000000193271.jpg',
+#    'sentids': [208122, 221124, 223293, 226641, 232947],
+#    'filename': 'COCO_val2014_000000193271.jpg',
+#    'imgid': 12,
+#    'split': 'restval',
+#    'sentences': {
+#        'tokens': ['a', 'kitchen', 'filled', 'with', 'black', 'appliances', 'and', 'lots', 'of', 'counter', 'top', 'space'],
+#        'raw': 'A kitchen filled with black appliances and lots of counter top space.',
+#        'imgid': 12,
+#        'sentid': 208122},
+#    'cocoid': 193271}
