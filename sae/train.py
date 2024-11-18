@@ -15,8 +15,8 @@ def step(sample, sae, criterion):
     txt = txt.to('cuda:0')
     img = img.to('cuda:0')
 
-    txt = txt / torch.norm(txt, p=2, dim=-1)
-    img = img / torch.norm(img, p=2, dim=-1)
+    txt = txt / torch.norm(txt, p=2, dim=-1).unsqueeze(-1)
+    img = img / torch.norm(img, p=2, dim=-1).unsqueeze(-1)
 
     text = sae.encode_text(txt)
     image = sae.encode_image(img)
