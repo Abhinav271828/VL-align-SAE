@@ -17,6 +17,8 @@ parser.add_argument("--val_interval",help="Validation interval",
                     type=int,        default=1,    required=False)
 parser.add_argument("--batch",       help="Partition size",
                     type=int,        default=100,  required=False)
+parser.add_argument("--topk",         help="Top k to consider",
+                    type=int,        default=10,   required=False)
 
 args = parser.parse_args()
 
