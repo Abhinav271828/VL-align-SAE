@@ -1,4 +1,5 @@
 from .model import SAE
+import os
 from data import MSCOCO
 from torch.utils.data import DataLoader
 from random import randint
@@ -13,6 +14,9 @@ def step(sample, sae, criterion):
     txt, img = sample
     txt = txt.to('cuda:0')
     img = img.to('cuda:0')
+
+    txt = txt / torch.norm(txt, p=2, dim=-1)
+    img = img / torch.norm(img, p=2, dim=-1)
 
     text = sae.encode_text(txt)
     image = sae.encode_image(img)
@@ -148,6 +152,6 @@ def train(args):
     while os.path.exists(f'sae_{i}.pth'):
         i += 1
     torch.save(sae.state_dict(), (f'sae_{i}.pth'))
-    with open(os.path.join(dir_name, f'config_{i}.json'), 'w') as f:
+    with open(f'config_{i}.json', 'w') as f:
         json.dump(vars(args), f, indent=4)
     wandb.finish()

@@ -16,9 +16,9 @@ class SAE(nn.Module):
     def encode_image(self, x):
         latent = self.img_encoder(x)
 
-        values, indices = torch.topk(latent, self.k)
-        latent = torch.zeros_like(latent)
-        latent.scatter_(-1, indices, values)
+        #values, indices = torch.topk(latent, self.k)
+        #latent = torch.zeros_like(latent)
+        #latent.scatter_(-1, indices, values)
 
         return latent
     
@@ -28,9 +28,9 @@ class SAE(nn.Module):
     def encode_text(self, x):
         latent = self.txt_encoder(x)
 
-        values, indices = torch.topk(latent, self.k)
-        latent = torch.zeros_like(latent)
-        latent.scatter_(-1, indices, values)
+        #values, indices = torch.topk(latent, self.k)
+        #latent = torch.zeros_like(latent)
+        #latent.scatter_(-1, indices, values)
 
         return latent
     
